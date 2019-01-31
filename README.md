@@ -6,6 +6,12 @@ Additional debug & fixes was made by Volodymyr Shymanskyy
 
 # Run
 
+### System requirements
+
+Install the following python and bluetooth related libs
+
+    $ sudo apt-get install python-pip python3-pip libglib2.0-dev python-dev python3-dev
+
 ### Install dependencies
 
 `pip install -r requirements.txt`
