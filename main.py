@@ -1,18 +1,19 @@
 import sys
 from auth import MiBand3
-from cursesmenu import *
-from cursesmenu.items import *
 from constants import ALERT_TYPES
 import time
 import os
+
 def call_immediate():
     print 'Sending Call Alert'
     time.sleep(1)
     band.send_alert(ALERT_TYPES.PHONE)
+    
 def msg_immediate():
     print 'Sending Message Alert'
     time.sleep(1)
     band.send_alert(ALERT_TYPES.MESSAGE)
+    
 def detail_info():
     print 'MiBand'
     print 'Soft revision:',band.get_revision()
@@ -22,6 +23,7 @@ def detail_info():
     print 'Time:', band.get_current_time()
     print 'Steps:', band.get_steps()
     raw_input('Press Enter to continue')
+    
 def custom_message():
     band.send_custom_alert(5)
 
@@ -59,6 +61,10 @@ if len(sys.argv) > 2:
 else:
     band.authenticate()
 
+# get data
+print("Mac Address: %s" % MAC_ADDR)
+heart_beat()
+'''
 menu = CursesMenu("MiBand MAC: " + MAC_ADDR, "Select an option")
 detail_menu = FunctionItem("View Band Detail info", detail_info)
 call_notif = FunctionItem("Send a High Prority Call Notification", call_immediate)
@@ -80,3 +86,4 @@ menu.append_item(miss_call_alert)
 menu.append_item(heart_beat_menu)
 menu.append_item(dfu_update_menu)
 menu.show()
+'''
