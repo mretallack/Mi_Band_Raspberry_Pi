@@ -1,10 +1,14 @@
-# MiBand3
-Library to work with Xiaomi MiBand 3
+# MiBand Raspberry Pi Unofficial SDK
 
-Base lib provided by Leo Soares
-Additional debug & fixes was made by Volodymyr Shymanskyy
+Library to work with Xiaomi MiBand (Tested on MiBand3, Might work on 2) [Read the Article here](https://medium.com/@a.nikishaev/how-i-hacked-xiaomi-miband-2-to-control-it-from-linux-a5bd2f36d3ad)
 
-# Run
+# Contributors & Info Sources
+
+1) Base lib provided by [Leo Soares](https://github.com/leojrfs/miband2)
+2) Additional debug & fixes was made by [Volodymyr Shymanskyy](https://github.com/vshymanskyy/miband2-python-test)
+3) Some info that really helped, found at [Freeyourgadget team](https://github.com/Freeyourgadget/Gadgetbridge/tree/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/service/devices/miband2)
+4) I forked the repository from [yogeshojha](https://github.com/yogeshojha) not sure if he edited the original code or it works for MiBand3 out of the box. the original code belongs to [Andrey Nikishaev](https://github.com/creotiv)
+5) Tested on Raspberry Pi 3B+ and Raspberry Pi Zero W with official Raspbian image.
 
 ### System requirements
 
@@ -14,20 +18,24 @@ Install the following python and bluetooth related libs
 
 ### Install dependencies
 
-`pip install -r requirements.txt`
+`pip install -r requirements.txt` from within the folder.
 
-Turn on your Bluetooth
+Make sure to Unpair you MiBand from current mobile apps and accounts you have.
 
-Unpair you MiBand2 from current mobile apps
+Find out your MiBand MAC address using the following command
 
-Find out your MiBand3 MAC address
+`sudo hcitool lescan`
 
-```sudo hcitool lescan```
+set the MAC Address that you've found inside the `main.py` script.
 
-Run this to auth device
+If it's your first time running the code, set the `INIT` flag inside `main.py` as `True`, later change it to `False`
+Execute the script:
 
-```python main.py MAC_ADDRESS --init```
+`python main.py`
 
-If you having problems(BLE can glitch sometimes)
+If you having problems (BLE can glitch sometimes)
+`sudo hciconfig hci0 reset`
 
-```sudo hciconfig hci0 reset```
+# Donate
+This library and code wouldn't be possible without [Andrey Nikishaev](https://github.com/creotiv)
+If you like it and you find it useful, you can consider donating him pepsi-money by paypal: https://www.paypal.me/creotiv

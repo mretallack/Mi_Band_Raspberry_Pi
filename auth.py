@@ -1,4 +1,3 @@
-import struct
 import time
 import logging
 from datetime import datetime
@@ -8,7 +7,6 @@ from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, BTLEExcep
 import crc16
 import os
 import struct
-
 from constants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES
 
 
@@ -53,6 +51,7 @@ class AuthenticationDelegate(DefaultDelegate):
 
 
 class MiBand3(Peripheral):
+
     _KEY = b'\x01\x23\x45\x67\x89\x01\x22\x23\x34\x45\x56\x67\x78\x89\x90\x02'
     _send_key_cmd = struct.pack('<18s', b'\x01\x08' + _KEY)
     _send_rnd_cmd = struct.pack('<2s', b'\x02\x08')
@@ -284,7 +283,7 @@ class MiBand3(Peripheral):
             "steps": steps,
             "meters": meters,
             "fat_gramms": fat_gramms,
-            "callories": callories
+            "calories": callories
         }
 
     def send_alert(self, _type):
@@ -292,42 +291,50 @@ class MiBand3(Peripheral):
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_ALERT)[0]
         char.write(_type)
 
-    def send_custom_alert(self, type):
+    def send_custom_alert(self, type, alert):
         if type == 5:
             base_value = '\x05\x01'
         elif type == 4:
             base_value = '\x04\x01'
         elif type == 3:
                 base_value = '\x03\x01'
-        phone = raw_input('Sender Name or Caller ID')
         svc = self.getServiceByUUID(UUIDS.SERVICE_ALERT_NOTIFICATION)
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CUSTOM_ALERT)[0]
-        char.write(base_value+phone, withResponse=True)
+        char.write(base_value+alert, withResponse=True)
 
-    def change_date(self):
-        print('Change date and time')
+    def change_date(self,time_string=None):
         svc = self.getServiceByUUID(UUIDS.SERVICE_MIBAND1)
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CURRENT_TIME)[0]
-        # date = raw_input('Enter the date in dd-mm-yyyy format\n')
-        # time = raw_input('Enter the time in HH:MM:SS format\n')
-        #
-        # day = int(date[:2])
-        # month = int(date[3:5])
-        # year = int(date[6:10])
-        # fraction = year / 256
-        # rem = year % 256
-        #
-        # hour = int(time[:2])
-        # minute = int(time[3:5])
-        # seconds =  int(time[6:])
-        #
-        # write_val =  format(rem, '#04x') + format(fraction, '#04x') + format(month, '#04x') + format(day, '#04x') + format(hour, '#04x') + format(minute, '#04x') + format(seconds, '#04x') + format(5, '#04x') + format(0, '#04x') + format(0, '#04x') +'0x16'
-        # write_val = write_val.replace('0x', '\\x')
-        # print(write_val)
-        char.write('\xe2\x07\x01\x1e\x00\x00\x00\x00\x00\x00\x16', withResponse=True)
-        raw_input('Date Changed, press any key to continue')
+        if(time_string != None):
+            try:
+                # split time and date
+                time_string = time_string.split(" ")
+                # get time and date saperely
+                date = time_string[0]
+                time = time_string[1]
+                # get date individual parameters
+                day = int(date[:2])
+                month = int(date[3:5])
+                year = int(date[6:10])
+                fraction = year / 256
+                rem = year % 256
+                # get time individual parameters
+                hour = int(time[:2])
+                minute = int(time[3:5])
+                seconds =  int(time[6:])
+                # create string to for the band
+                write_val =  format(rem, '#04x') + format(fraction, '#04x') + format(month, '#04x') + format(day, '#04x') + format(hour, '#04x') + format(minute, '#04x') + format(seconds, '#04x') + format(5, '#04x') + format(0, '#04x') + format(0, '#04x') +'0x16'
+                write_val = write_val.replace('0x', '\\x')
+            except:
+                print("[-] Wrong format for time and date")
+                return False
+        else:
+            write_val = '\xe2\x07\x01\x1e\x00\x00\x00\x00\x00\x00\x16'
+        # set the time and date to the band
+        char.write(write_val, withResponse=True)
+        return True
+
     def dfuUpdate(self, fileName):
-        print('Update Firmware/Resource')
         svc = self.getServiceByUUID(UUIDS.SERVICE_DFU_FIRMWARE)
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_DFU_FIRMWARE)[0]
         extension = os.path.splitext(fileName)[1][1:]
@@ -375,7 +382,7 @@ class MiBand3(Peripheral):
             self.waitForNotifications(0.5)
             char.write('\x05', withResponse=True)
         print('Update Complete')
-        raw_input('Press Enter to Continue')
+
     def start_raw_data_realtime(self, heart_measure_callback=None, heart_raw_callback=None, accel_raw_callback=None):
             char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
             char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
@@ -393,15 +400,12 @@ class MiBand3(Peripheral):
             # stop heart monitor continues & manual
             char_ctrl.write(b'\x15\x02\x00', True)
             char_ctrl.write(b'\x15\x01\x00', True)
-            # WTF
-            # char_sens_d1.write(b'\x01\x00', True)
             # enabling accelerometer & heart monitor raw data notifications
             char_sensor.write(b'\x01\x03\x19')
             # IMO: enablee heart monitor notifications
             char_d.write(b'\x01\x00', True)
             # start hear monitor continues
             char_ctrl.write(b'\x15\x01\x01', True)
-            # WTF
             char_sensor.write(b'\x02')
             t = time.time()
             while True:
