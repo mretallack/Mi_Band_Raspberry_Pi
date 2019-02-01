@@ -65,3 +65,6 @@ def main():
     band.stop_realtime()
     # update the band firmware
     band.dfuUpdate("/full/firmware/location/goes/here/firmware.fw")
+
+if __name__ == "__main__":
+    main()
