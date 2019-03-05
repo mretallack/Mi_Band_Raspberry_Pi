@@ -2,12 +2,15 @@ import time
 import logging
 from datetime import datetime
 from Crypto.Cipher import AES
-from Queue import Queue, Empty
 from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, BTLEException
 import crc16
 import os
 import struct
 from constants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES
+try:
+    from queue import Queue, Empty
+except ImportError:
+    from Queue import Queue, Empty
 
 
 class AuthenticationDelegate(DefaultDelegate):
@@ -368,7 +371,7 @@ class MiBand3(Peripheral):
           while True:
             c = f.read(20) #takes 20 bytes :D
             if not c:
-              print "Update Over"
+              print("Update Over")
               break
             print('Writing Resource', c.encode('hex'))
             char1.write(c)
