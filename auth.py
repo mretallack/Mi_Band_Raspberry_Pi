@@ -296,14 +296,14 @@ class MiBand3(Peripheral):
 
     def send_custom_alert(self, type, alert):
         if type == 5:
-            base_value = '\x05\x01'
+            base_value = b'\x05\x01'
         elif type == 4:
-            base_value = '\x04\x01'
+            base_value = b'\x04\x01'
         elif type == 3:
-                base_value = '\x03\x01'
+                base_value = b'\x03\x01'
         svc = self.getServiceByUUID(UUIDS.SERVICE_ALERT_NOTIFICATION)
         char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CUSTOM_ALERT)[0]
-        char.write(base_value+alert, withResponse=True)
+        char.write(base_value+alert.encode('utf-8'), withResponse=True)
 
     def change_date(self,time_string=None):
         svc = self.getServiceByUUID(UUIDS.SERVICE_MIBAND1)
@@ -321,13 +321,29 @@ class MiBand3(Peripheral):
                 year = int(date[6:10])
                 fraction = year / 256
                 rem = year % 256
+
+                print("1")
+
                 # get time individual parameters
                 hour = int(time[:2])
                 minute = int(time[3:5])
                 seconds =  int(time[6:])
+
+                print("fraction"+str(fraction))
+                print("fraction"+str(format(fraction, '#04x')))
+                print("month"+str(format(month, '#04x')))
+                print("day"+str(format(day, '#04x')))
+                print("hour"+str(format(hour, '#04x')))
+                print("minute"+str(format(minute, '#04x')))
+                print("seconds"+str(format(seconds, '#04x')))
+                print("seconds"+str(seconds))
+
+
+
                 # create string to for the band
                 write_val =  format(rem, '#04x') + format(fraction, '#04x') + format(month, '#04x') + format(day, '#04x') + format(hour, '#04x') + format(minute, '#04x') + format(seconds, '#04x') + format(5, '#04x') + format(0, '#04x') + format(0, '#04x') +'0x16'
-                write_val = write_val.replace('0x', '\\x')
+                write_val = write_val.replace('0x', '\\x')  
+                print("3")
             except:
                 print("[-] Wrong format for time and date")
                 return False

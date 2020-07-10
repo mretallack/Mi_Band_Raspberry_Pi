@@ -66,9 +66,9 @@ class ALERT_TYPES(object):
 
     __metaclass__ = Immutable
 
-    NONE = '\x00'
-    MESSAGE = '\x01'
-    PHONE = '\x02'
+    NONE = b'\x00'
+    MESSAGE = b'\x01'
+    PHONE = b'\x02'
 
 class QUEUE_TYPES(object):
 
