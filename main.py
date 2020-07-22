@@ -3,6 +3,7 @@ from auth import MiBand3
 from constants import ALERT_TYPES
 import time
 import os
+import json
 from datetime import datetime
 
 # Set MAC address of your band here
@@ -77,7 +78,7 @@ def main():
     steps=band.get_steps()
     print("Steps: "+str(steps))
 
-    start_time = datetime.strptime("21.07.2020 01:01", "%d.%m.%Y %H:%M")
+    start_time = datetime.strptime("22.07.2020 10:01", "%d.%m.%Y %H:%M")
     band.start_get_previews_data(start_time)
     
     while band.active:
@@ -86,6 +87,9 @@ def main():
         
     print("Active cleared...")
 
+    activity_data = band.get_activity_data()
+    with open('activity.json', 'w') as outfile:
+        json.dump(activity_data, outfile)
 
 if __name__ == "__main__":
     main()

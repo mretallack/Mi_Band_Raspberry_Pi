@@ -105,9 +105,20 @@ class AuthenticationDelegate(DefaultDelegate):
                     if self.device.outfile:
                         self.device.outfile.write(f"{timestamp.strftime('%d.%m.%Y - %H:%M')},{category},{intensity},{steps},{heart_rate}\n")
 
+                    newEntry = {
+                                    "timestamp": timestamp.strftime('%d.%m - %H:%M'),
+                                    "category": category,
+                                    "intensity": intensity,
+                                    "steps": steps,
+                                    "heart_rate": heart_rate
+                                }
+                                    
+                    self.device.activity_data.append(newEntry)
+
                     i += 4
 
                     d = datetime.now().replace(second=0, microsecond=0) - timedelta(minutes=1)
+                    
                     if timestamp == d:
                         self.device.active = False
                         return    
@@ -127,6 +138,8 @@ class MiBand3(Peripheral):
     _send_enc_key = struct.pack('<2s', b'\x03\x08')
 
     pkg = 0
+    
+    activity_data=[]
 
     def __init__(self, mac_address, timeout=0.5, debug=False):
         FORMAT = '%(asctime)-15s %(name)s (%(levelname)s) > %(message)s'
@@ -551,6 +564,7 @@ class MiBand3(Peripheral):
 
 
     def start_get_previews_data(self, start_timestamp):
+            self.activity_data=[]
             self._auth_previews_data_notif(True)
             self.waitForNotifications(0.1)
             print("Trigger activity communication")
@@ -563,3 +577,6 @@ class MiBand3(Peripheral):
             trigger = b'\x01\x01' + ts + b'\x00\x08'
             self._char_fetch.write(trigger, False)
             self.active = True
+
+    def get_activity_data(self):
+            return(self.activity_data)
