@@ -3,9 +3,10 @@ from auth import MiBand3
 from constants import ALERT_TYPES
 import time
 import os
+from datetime import datetime
 
 # Set MAC address of your band here
-MAC_ADDR = "00:00:00:00:00"
+MAC_ADDR = "D4:32:70:F4:17:D6"
 # need to initialize or not
 INIT = False
 
@@ -42,9 +43,11 @@ def heart_beat_raw_callback(heart_raw):
 def heart_beat_callback(beat):
     print("Heartbeat BPM: %s" % beat)
 
-def main():
+
+def other():
     # sending call alert demo
     band.send_alert(ALERT_TYPES.PHONE)
+    print("one...")
     # sending message alert demo
     band.send_alert(ALERT_TYPES.MESSAGE)
     # sending custom message demo
@@ -54,7 +57,7 @@ def main():
     # sending custom missed call message
     band.send_custom_alert(4,"Missed call from Xiaomi")
     # change the watch to custom time and date
-    band.change_date("dd-mm-yyyy HH:MM:SS")
+    band.change_date("10-07-2020 07:32:20")
     # get heart beat continuesly
     band.start_raw_data_realtime(heart_measure_callback=heart_beat_callback)
     # get raw heart monnitor data
@@ -64,7 +67,25 @@ def main():
     # stop all realtime activity from the band
     band.stop_realtime()
     # update the band firmware
-    band.dfuUpdate("/full/firmware/location/goes/here/firmware.fw")
+    #band.dfuUpdate("/full/firmware/location/goes/here/firmware.fw")
+
+
+def main():
+    print("Starting...")
+
+
+    steps=band.get_steps()
+    print("Steps: "+str(steps))
+
+    start_time = datetime.strptime("21.07.2020 01:01", "%d.%m.%Y %H:%M")
+    band.start_get_previews_data(start_time)
+    
+    while band.active:
+        print("Wait Active")
+        band.waitForNotifications(0.1)
+        
+    print("Active cleared...")
+
 
 if __name__ == "__main__":
     main()

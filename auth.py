@@ -1,6 +1,6 @@
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from Crypto.Cipher import AES
 from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, BTLEException
 import crc16
@@ -48,6 +48,72 @@ class AuthenticationDelegate(DefaultDelegate):
                 self.device.queue.put((QUEUE_TYPES.RAW_ACCEL, data))
             elif len(data) == 16:
                 self.device.queue.put((QUEUE_TYPES.RAW_HEART, data))
+                
+                
+        # The fetch characteristic controls the communication with the activity characteristic.
+        # It can trigger the communication.
+        elif hnd == self.device._char_fetch.getHandle():
+            if data[:3] == b'\x10\x01\x01':
+                # get timestamp from what date the data actually is received
+                year = struct.unpack("<H", data[7:9])[0]
+                month = struct.unpack("b", data[9:10])[0]
+                day = struct.unpack("b", data[10:11])[0]
+                hour = struct.unpack("b", data[11:12])[0]
+                minute = struct.unpack("b", data[12:13])[0]
+                self.device.first_timestamp = datetime(year, month, day, hour, minute)
+                print("Fetch data from {}-{}-{} {}:{}".format(year, month, day, hour, minute))
+                self.device._char_fetch.write(b'\x02', False)
+            elif data[:3] == b'\x10\x02\x01':
+                self.device.active = False
+                return
+            else:
+                print("Unexpected data on handle " + str(hnd) + ": " + data.hex())
+                return
+            
+         # The activity characteristic sends the previews recorded information
+         # from one given timestamp until now.
+        elif hnd == self.device._char_activity.getHandle():
+            if len(data) % 4 is not 1:
+                if self.device.last_timestamp > datetime.now() - timedelta(minutes=1):
+                    self.device.active = False
+                    return
+                print("Trigger more communication")
+                time.sleep(1)
+                t = self.device.last_timestamp + timedelta(minutes=1)
+                self.device.start_get_previews_data(t)
+            else:
+                pkg = self.device.pkg
+                self.device.pkg += 1
+                i = 1
+                while i < len(data):
+                    index = int(pkg) * 4 + (i - 1) / 4
+                    timestamp = self.device.first_timestamp + timedelta(minutes=index)
+                    self.device.last_timestamp = timestamp
+                    # category = int.from_bytes(data[i:i + 1], byteorder='little')
+                    category = struct.unpack("<B", data[i:i + 1])
+                    intensity = struct.unpack("B", data[i + 1:i + 2])[0]
+                    steps = struct.unpack("B", data[i + 2:i + 3])[0]
+                    heart_rate = struct.unpack("B", data[i + 3:i + 4])[0]
+
+                    print("{}: category: {}; acceleration {}; steps {}; heart rate {};".format(
+                        timestamp.strftime('%d.%m - %H:%M'),
+                        category,
+                        intensity,
+                        steps,
+                        heart_rate)
+                    )
+                    if self.device.outfile:
+                        self.device.outfile.write(f"{timestamp.strftime('%d.%m.%Y - %H:%M')},{category},{intensity},{steps},{heart_rate}\n")
+
+                    i += 4
+
+                    d = datetime.now().replace(second=0, microsecond=0) - timedelta(minutes=1)
+                    if timestamp == d:
+                        self.device.active = False
+                        return    
+                            
+         # The activity characteristic sends the previews recorded information
+         # from one given timestamp until now.                
         else:
             self.device._log.error("Unhandled Response " + hex(hnd) + ": " +
                                    str(data.encode("hex")) + " len:" + str(len(data)))
@@ -60,6 +126,8 @@ class MiBand3(Peripheral):
     _send_rnd_cmd = struct.pack('<2s', b'\x02\x08')
     _send_enc_key = struct.pack('<2s', b'\x03\x08')
 
+    pkg = 0
+
     def __init__(self, mac_address, timeout=0.5, debug=False):
         FORMAT = '%(asctime)-15s %(name)s (%(levelname)s) > %(message)s'
         logging.basicConfig(format=FORMAT)
@@ -70,6 +138,8 @@ class MiBand3(Peripheral):
         self._log.info('Connecting to ' + mac_address)
         Peripheral.__init__(self, mac_address, addrType=ADDR_TYPE_RANDOM)
         self._log.info('Connected')
+        
+        self.outfile = None
 
         self.timeout = timeout
         self.mac_address = mac_address
@@ -88,6 +158,12 @@ class MiBand3(Peripheral):
 
         self._char_heart_ctrl = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_CONTROL)[0]
         self._char_heart_measure = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
+
+        # Recorded information
+        self._char_fetch = self.getCharacteristics(uuid=UUIDS.CHARACTERISTIC_FETCH)[0]
+        self._desc_fetch = self._char_fetch.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
+        self._char_activity = self.getCharacteristics(uuid=UUIDS.CHARACTERISTIC_ACTIVITY_DATA)[0]
+        self._desc_activity = self._char_activity.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
 
         # Enable auth service notifications on startup
         self._auth_notif(True)
@@ -459,16 +535,31 @@ class MiBand3(Peripheral):
             self.heart_raw_callback = None
             self.accel_raw_callback = None
 
+    def _auth_previews_data_notif(self, enabled):
+        if enabled:
+            self._log.info("Enabling Fetch Char notifications status...")
+            self._desc_fetch.write(b"\x01\x00", True)
+            self._log.info("Enabling Activity Char notifications status...")
+            self._desc_activity.write(b"\x01\x00", True)
+        elif not enabled:
+            self._log.info("Disabling Fetch Char notifications status...")
+            self._desc_fetch.write(b"\x00\x00", True)
+            self._log.info("Disabling Activity Char notifications status...")
+            self._desc_activity.write(b"\x00\x00", True)
+        else:
+            self._log.error("Something went wrong while changing the Fetch and Activity notifications status...")
+
+
     def start_get_previews_data(self, start_timestamp):
             self._auth_previews_data_notif(True)
             self.waitForNotifications(0.1)
             print("Trigger activity communication")
             year = struct.pack("<H", start_timestamp.year)
-            month = struct.pack("<H", start_timestamp.month)[0]
-            day = struct.pack("<H", start_timestamp.day)[0]
-            hour = struct.pack("<H", start_timestamp.hour)[0]
-            minute = struct.pack("<H", start_timestamp.minute)[0]
-            ts = year + month + day + hour + minute
+            month = bytes([struct.pack("<H", start_timestamp.month)[0]])
+            day = bytes([struct.pack("<H", start_timestamp.day)[0]])
+            hour = bytes([struct.pack("<H", start_timestamp.hour)[0]])
+            minute = bytes([struct.pack("<H", start_timestamp.minute)[0]])
+            ts = bytes(year) + bytes(month) + bytes(day) + bytes(hour) + bytes(minute)
             trigger = b'\x01\x01' + ts + b'\x00\x08'
             self._char_fetch.write(trigger, False)
             self.active = True
