@@ -105,8 +105,11 @@ class AuthenticationDelegate(DefaultDelegate):
                     if self.device.outfile:
                         self.device.outfile.write(f"{timestamp.strftime('%d.%m.%Y - %H:%M')},{category},{intensity},{steps},{heart_rate}\n")
 
+                    # "09:46:17 06-02-2016",
+                    # "2016-02-06T22:15:00+00:00"
+                    # %Y-%m-%d %H:%M:%S
                     newEntry = {
-                                    "timestamp": timestamp.strftime('%d.%m - %H:%M'),
+                                    "timestamp": timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                                     "category": category,
                                     "intensity": intensity,
                                     "steps": steps,
@@ -573,8 +576,12 @@ class MiBand3(Peripheral):
             day = bytes([struct.pack("<H", start_timestamp.day)[0]])
             hour = bytes([struct.pack("<H", start_timestamp.hour)[0]])
             minute = bytes([struct.pack("<H", start_timestamp.minute)[0]])
+
+            print("hour "+str(start_timestamp.hour))
+            print("minute"+str(start_timestamp.minute))
+
             ts = bytes(year) + bytes(month) + bytes(day) + bytes(hour) + bytes(minute)
-            trigger = b'\x01\x01' + ts + b'\x00\x08'
+            trigger = b'\x01\x01' + ts + b'\x00\x00'
             self._char_fetch.write(trigger, False)
             self.active = True
 
